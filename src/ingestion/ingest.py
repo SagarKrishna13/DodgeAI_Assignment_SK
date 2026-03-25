@@ -2,8 +2,8 @@ import os
 import json
 import pandas as pd
 from pathlib import Path
-from app.config import DATA_DIR
-from app.db.connection import get_db_connection
+from src.config import DATA_DIR
+from src.db.connection import get_db_connection
 
 def ingest_data():
     """Ingests data from JSONL files into the database on startup."""

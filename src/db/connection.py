@@ -1,5 +1,5 @@
 import sqlite3
-from app.config import DB_PATH
+from src.config import DB_PATH
 
 def dict_factory(cursor, row):
     d = {}

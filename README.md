@@ -79,7 +79,7 @@ pip install -r requirements.txt
 echo GROQ_API_KEY=your_key_here > .env
 
 # 5. Start the server
-uvicorn app.main:app --reload
+uvicorn src.main:app --reload
 
 # 6. Open browser
 # http://127.0.0.1:8000
@@ -98,7 +98,7 @@ This project is designed for **Render** deployment.
 3. Connect your GitHub repository.
 4. Configure:
    - **Build Command:** `pip install -r requirements.txt`
-   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port 10000`
+   - **Start Command:** `uvicorn src.main:app --host 0.0.0.0 --port 10000`
 5. Add environment variable `GROQ_API_KEY` in the Render dashboard.
 6. Deploy!
 
@@ -136,7 +136,7 @@ This project is designed for **Render** deployment.
 
 ```
 sap-o2c-graph/
-├── app/
+├── src/
 │   ├── main.py              # FastAPI entrypoint, routing, static file serving
 │   ├── config.py            # Environment variable loading (GROQ_API_KEY)
 │   ├── db/                  # SQLite connection + schema extraction
@@ -144,6 +144,9 @@ sap-o2c-graph/
 │   ├── guardrails/          # Domain check + SQL safety validator
 │   ├── ingestion/           # JSONL → SQLite ingestion pipeline
 │   └── llm/                 # Groq prompt builder + query engine
+├── sessions/
+│   ├── sample_session.json  # Sample interaction history
+│   └── full_conversation_log.txt
 ├── static/
 │   └── index.html           # Vis.js frontend + chat UI
 ├── requirements.txt

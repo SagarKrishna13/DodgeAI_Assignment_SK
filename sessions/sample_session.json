@@ -1,0 +1,12 @@
+[
+  {
+    "question": "List all sales orders",
+    "sql": "SELECT * FROM sales_order_headers LIMIT 50",
+    "answer": "Returned list of sales orders from the dataset."
+  },
+  {
+    "question": "Which customers placed orders?",
+    "sql": "SELECT DISTINCT soldToParty FROM sales_order_headers LIMIT 50",
+    "answer": "Customers who placed orders are listed."
+  }
+]

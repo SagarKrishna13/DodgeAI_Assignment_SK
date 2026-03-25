@@ -1,4 +1,4 @@
-from app.db.connection import get_db_connection
+from src.db.connection import get_db_connection
 
 def build_full_graph(limit_per_table: int = 150) -> dict:
     """

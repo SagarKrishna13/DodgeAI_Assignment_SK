@@ -1,10 +1,10 @@
 import re
 from groq import Groq
-from app.config import GROQ_API_KEY, MODEL, MAX_TOKENS
-from app.llm.prompt import build_system_prompt, generate_sql_prompt
-from app.guardrails.sql_validator import is_safe_sql, enforce_limit
-from app.db.schema import extract_schema_string
-from app.db.connection import get_db_connection
+from src.config import GROQ_API_KEY, MODEL, MAX_TOKENS
+from src.llm.prompt import build_system_prompt, generate_sql_prompt
+from src.guardrails.sql_validator import is_safe_sql, enforce_limit
+from src.db.schema import extract_schema_string
+from src.db.connection import get_db_connection
 
 # Regex patterns for SQL extraction
 SQL_TAG_RE = re.compile(r"<sql>(.*?)</sql>", re.DOTALL | re.IGNORECASE)

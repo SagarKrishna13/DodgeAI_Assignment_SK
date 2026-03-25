@@ -1,4 +1,4 @@
-from app.graph.schema_graph import NODE_CONFIG, EDGE_MAP
+from src.graph.schema_graph import NODE_CONFIG, EDGE_MAP
 
 
 def fetch_subgraph(entity_ids: list) -> dict:
@@ -6,7 +6,7 @@ def fetch_subgraph(entity_ids: list) -> dict:
     Fetches actual data rows from SQLite for the given arbitrary entity IDs.
     Each table query is wrapped individually so one failure never blocks others.
     """
-    from app.db.connection import get_db_connection
+    from src.db.connection import get_db_connection
 
     if not entity_ids:
         return {"nodes": [], "edges": []}

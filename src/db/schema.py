@@ -1,4 +1,4 @@
-from app.db.connection import get_db_connection
+from src.db.connection import get_db_connection
 
 def extract_schema_string() -> str:
     """Extracts and returns the database schema as a string."""

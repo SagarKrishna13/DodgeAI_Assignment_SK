@@ -6,11 +6,11 @@ from contextlib import asynccontextmanager
 from typing import List, Optional
 from pydantic import BaseModel
 
-from app.ingestion.ingest import ingest_data
-from app.llm.query_engine import query_groq
-from app.graph.schema_graph import build_schema_graph
-from app.graph.subgraph import fetch_subgraph
-from app.graph.full_graph import build_full_graph
+from src.ingestion.ingest import ingest_data
+from src.llm.query_engine import query_groq
+from src.graph.schema_graph import build_schema_graph
+from src.graph.subgraph import fetch_subgraph
+from src.graph.full_graph import build_full_graph
 
 # ── Pydantic Request Models ───────────────────────────────────────────────────
 class QueryRequest(BaseModel):
