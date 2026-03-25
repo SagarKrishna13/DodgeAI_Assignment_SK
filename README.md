@@ -1,78 +1,108 @@
-# Dodge AI — SAP Order-to-Cash Graph Explorer
+# Graph-Based SAP O2C Query System
 
-An intelligent, interactive graph visualization system for SAP Order-to-Cash (O2C) data. Ask natural language questions and watch the graph highlight the relevant business documents in real-time.
+A system that converts natural language queries into SQL over SAP Order-to-Cash data and visualizes results as a dynamic, interactive graph.
+
+---
+
+## Description
+
+This project enables business users to ask plain-English questions about SAP Order-to-Cash (O2C) processes. The system translates the question into SQL using an LLM, executes it over a SQLite database, and visualizes the relevant documents (Orders, Deliveries, Invoices, Payments, Customers) as a highlighted subgraph on a Vis.js network.
 
 ---
 
 ## Features
 
-- **Natural Language Querying** — Powered by Groq's `llama-3.1-8b-instant` LLM, translate plain English questions into accurate SQL.
-- **Dynamic Graph Visualization** — Vis.js network graph with 1,000+ O2C nodes (Orders, Deliveries, Invoices, Payments, Customers).
-- **Real-time Subgraph Highlighting** — When a query returns results, the UI automatically animates and highlights the relevant nodes while fading the background.
-- **SQLite Guardrails** — Strict prompt rules prevent SQL hallucinations and MySQL/PostgreSQL-specific syntax errors.
-- **Read-only Guardrail** — Rejects any attempt to INSERT, UPDATE, or DELETE data.
-- **Domain Guardrail** — Restricts the agent to SAP O2C data only; ignores off-topic questions.
+- **Natural Language to SQL** — Powered by Groq's `llama-3.1-8b-instant` LLM
+- **Schema-Aware Prompting** — Explicit column notes and table definitions injected into every prompt
+- **Join Dictionary** — Pre-built SAP O2C join relationships enforced in all SQL generation
+- **Graph Visualization** — Interactive Vis.js network with 1000+ O2C document nodes
+- **Subgraph Extraction** — Query results dynamically highlight relevant graph paths in real-time
+- **Guardrails** — Domain restriction (SAP O2C only), read-only enforcement, SQLite date arithmetic rules
 
 ---
 
-## Tech Stack
+## Architecture
+
+```
+User Query (Natural Language)
+        |
+        v
+  FastAPI Backend (/query)
+        |
+        v
+  LLM (Groq API) — Schema-aware prompting + guardrails
+        |
+        v
+  SQL Execution (SQLite)
+        |
+        v
+  Entity ID Extraction
+        |
+        v
+  Subgraph API (/subgraph)
+        |
+        v
+  Vis.js Graph — Highlighted subgraph rendered in browser
+```
 
 | Layer | Technology |
 |---|---|
 | Backend | FastAPI + Uvicorn |
 | LLM | Groq API (`llama-3.1-8b-instant`) |
-| Database | SQLite (auto-generated on startup) |
+| Database | SQLite (auto-generated on startup from JSONL data) |
 | Frontend | Vanilla JS + Vis.js Network |
-| Data Ingestion | Pandas (from JSONL files) |
+| Data Ingestion | Pandas |
 
 ---
 
-## Run Locally
+## How to Run Locally
 
 ### Prerequisites
 - Python 3.10+
-- A [Groq](https://console.groq.com) API key
-
-### Setup
+- A [Groq API key](https://console.groq.com)
+- SAP O2C JSONL data files placed inside a `data/` folder
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url>
-cd sap-o2c-graph
+git clone https://github.com/SagarKrishna13/DodgeAI_Assignment_SK.git
+cd DodgeAI_Assignment_SK
 
 # 2. Create and activate virtual environment
 python -m venv venv
-venv\Scripts\activate   # Windows
-# source venv/bin/activate   # macOS/Linux
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # macOS / Linux
 
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Create a .env file with your Groq API key
+# 4. Set your Groq API key (create a .env file)
 echo GROQ_API_KEY=your_key_here > .env
 
-# 5. Place your JSONL data files in the data/ directory
-#    (The app will auto-ingest them on startup)
-
-# 6. Start the server
+# 5. Start the server
 uvicorn app.main:app --reload
 
-# 7. Open your browser
+# 6. Open browser
 # http://127.0.0.1:8000
 ```
 
+On startup, the app automatically ingests all JSONL files in `data/` into a local SQLite database.
+
 ---
 
-## Deployment on Render
+## Deployment
+
+This project is designed for **Render** deployment.
 
 1. Push this repo to GitHub.
 2. Create a new **Web Service** on [Render](https://render.com).
 3. Connect your GitHub repository.
-4. Set the following configuration:
+4. Configure:
    - **Build Command:** `pip install -r requirements.txt`
    - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port 10000`
-5. Add the environment variable `GROQ_API_KEY` in Render's dashboard.
+5. Add environment variable `GROQ_API_KEY` in the Render dashboard.
 6. Deploy!
+
+> **Note:** Since `data/` and `*.db` are excluded from the repo via `.gitignore`, you must either mount a persistent disk with your data files or pre-seed the database as part of deployment.
 
 ---
 
@@ -80,22 +110,22 @@ uvicorn app.main:app --reload
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/` | Serves the frontend UI (`index.html`) |
-| `GET` | `/graph/full` | Returns the full O2C graph dataset for initial rendering |
-| `GET` | `/schema_graph` | Returns the high-level schema-only relationship graph |
-| `POST` | `/query` | Accepts a natural language question; returns SQL + answer + highlighted entity IDs |
-| `POST` | `/subgraph` | Accepts a list of entity IDs; returns the connected subgraph for highlighting |
+| `GET` | `/` | Serves the frontend UI |
+| `GET` | `/schema_graph` | Returns high-level O2C entity-relationship graph |
+| `GET` | `/graph/full` | Returns the full sampled O2C document graph |
+| `POST` | `/query` | Natural language → SQL → answer + highlighted entity IDs |
+| `POST` | `/subgraph` | Accepts entity IDs → returns connected subgraph |
 
 ### POST `/query` Example
 
 ```json
 // Request
-{ "question": "Show me the highest value sales order and its customer." }
+{ "question": "Show the highest value sales order and its customer." }
 
 // Response
 {
-  "answer": "The highest value sales order is 740509...",
-  "sql": "SELECT soh.salesOrder, soh.soldToParty...",
+  "answer": "The highest value order is 740509 for customer 310000109 with $19,021.27.",
+  "sql": "SELECT soh.salesOrder, soh.soldToParty, CAST(soh.totalNetAmount AS FLOAT)...",
   "highlighted_ids": ["740509", "310000109"]
 }
 ```
@@ -107,24 +137,15 @@ uvicorn app.main:app --reload
 ```
 sap-o2c-graph/
 ├── app/
-│   ├── main.py              # FastAPI app, routes, startup
-│   ├── config.py            # Environment config (GROQ_API_KEY)
-│   ├── db/
-│   │   ├── connection.py    # SQLite connection factory
-│   │   └── schema.py        # Schema extraction utility
-│   ├── graph/
-│   │   ├── full_graph.py    # Full O2C node/edge builder
-│   │   ├── schema_graph.py  # Schema-level graph builder
-│   │   └── subgraph.py      # Entity subgraph extractor
-│   ├── guardrails/
-│   │   └── sql_validator.py # SQL safety checks (SELECT-only, LIMIT enforcement)
-│   ├── ingestion/
-│   │   └── ingest.py        # JSONL → SQLite ingestion pipeline
-│   └── llm/
-│       ├── prompt.py        # System prompt, SQL rules, guardrails
-│       └── query_engine.py  # Groq API call + SQL executor + ID extractor
+│   ├── main.py              # FastAPI entrypoint, routing, static file serving
+│   ├── config.py            # Environment variable loading (GROQ_API_KEY)
+│   ├── db/                  # SQLite connection + schema extraction
+│   ├── graph/               # Full graph, schema graph, subgraph builders
+│   ├── guardrails/          # Domain check + SQL safety validator
+│   ├── ingestion/           # JSONL → SQLite ingestion pipeline
+│   └── llm/                 # Groq prompt builder + query engine
 ├── static/
-│   └── index.html           # Frontend (Vis.js + chat UI)
+│   └── index.html           # Vis.js frontend + chat UI
 ├── requirements.txt
 └── README.md
 ```
