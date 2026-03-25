@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment secrets
+.env
+*.env
+
+# Database files (generated on startup)
+*.db
+*.sqlite3
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+
+# Local data (large raw datasets)
+data/
+
+# Test / debug scripts
+test_*.py
+debug_*.py
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

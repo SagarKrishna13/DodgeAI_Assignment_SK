@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAP O2C Graph Explorer</title>
+  <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9fafb;
+      --panel: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --accent: #0f172a;
+      --blue-edge: #badaff;
+      --radius: 8px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ───────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 24px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    header .icon {
+      width: 24px; height: 24px;
+      border: 1.5px solid var(--text);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    header .icon::before { content: ''; width: 2px; height: 12px; background: var(--text); margin-right: 4px; }
+    header .icon::after { content: ''; width: 2px; height: 12px; background: var(--text); }
+
+    header h1 { 
+      font-size: 15px; font-weight: 500; color: var(--text-muted);
+      display: flex; gap: 8px; align-items: center;
+    }
+    header h1 strong { color: var(--text); font-weight: 600; }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      margin-left: auto;
+    }
+
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Graph Panel ───────────────────────────────── */
+    .graph-panel {
+      flex: 1;
+      position: relative;
+      background: #ffffff;
+    }
+
+    .floating-controls {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+
+    .float-btn {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .float-btn.dark {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    #graph-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ── Chat Panel ────────────────────────────────── */
+    .chat-panel {
+      width: 380px;
+      min-width: 380px;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      box-shadow: -4px 0 15px rgba(0,0,0,0.02);
+      z-index: 20;
+    }
+
+    .chat-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .chat-header .title { font-size: 14px; font-weight: 600; }
+    .chat-header .subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px;}
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .message {
+      display: flex;
+      gap: 12px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px;
+    }
+
+    .message.bot .avatar { background: var(--accent); color: white; }
+    .message.user .avatar { background: #e2e8f0; color: var(--text-muted); }
+
+    .msg-content {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .msg-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 6px;
+    }
+    .msg-name { font-weight: 600; font-size: 13px; }
+    .msg-role { font-size: 12px; color: var(--text-muted); }
+
+    .msg-bubble {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      border-radius: 8px;
+      color: var(--text);
+    }
+    
+    .message.user .msg-bubble {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .sql-block {
+      margin-top: 8px;
+      background: #f1f5f9;
+      padding: 10px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #334155;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .chat-input-area {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 8px;
+      background: #f8fafc;
+    }
+
+    .input-wrapper {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex; padding: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    #user-input {
+      flex: 1;
+      border: none;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: none;
+      outline: none;
+      max-height: 100px;
+    }
+
+    #user-input::placeholder { color: #94a3b8; }
+
+    #send-btn {
+      width: 40px; height: 40px;
+      background: #94a3b8;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s;
+    }
+
+    #user-input:valid ~ #send-btn { background: var(--accent); }
+    #send-btn:hover { opacity: 0.9; }
+
+    /* ── Custom Tooltip ────────────────────────────── */
+    #custom-tooltip {
+      position: absolute;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px;
+      width: 260px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      font-size: 12px;
+      display: none;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    #custom-tooltip h3 {
+      font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--accent);
+    }
+    
+    .tt-row {
+      display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;
+    }
+    .tt-key { color: var(--text-muted); font-weight: 500; }
+    .tt-val { color: var(--text); text-align: right; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Scrollbar ─────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="icon"></div>
+  <h1>Mapping <span style="color:#cbd5e1">/</span> <strong>Order to Cash</strong></h1>
+  <div class="status-dot" id="api-status"></div>
+</header>
+
+<div class="main">
+  <!-- ─── Graph Panel ─── -->
+  <div class="graph-panel">
+    <div class="floating-controls">
+      <button class="float-btn" id="fit-btn">↗ Minimize</button>
+      <button class="float-btn dark" id="reset-btn">❄ Hide Granular Overlay</button>
+    </div>
+    <div id="graph-container"></div>
+    <div id="custom-tooltip"></div>
+  </div>
+
+  <!-- ─── Chat Panel ─── -->
+  <div class="chat-panel">
+    <div class="chat-header">
+      <div class="title">Chat with Graph</div>
+      <div class="subtitle">Order to Cash</div>
+    </div>
+    
+    <div class="chat-messages" id="chat-messages">
+      <div class="message bot">
+        <div class="avatar">D</div>
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="msg-name">Dodge AI</span>
+            <span class="msg-role">Graph Agent</span>
+          </div>
+          <div class="msg-bubble">
+            Hi! I can help you analyze the <strong>Order to Cash</strong> process.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <div style="font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 4px; font-weight: 500;">
+        <div style="width:6px;height:6px;background:#10b981;border-radius:50%"></div> Dodge AI is awaiting instructions
+      </div>
+      <div class="input-wrapper">
+        <textarea id="user-input" placeholder="Analyze anything" rows="1"></textarea>
+        <button id="send-btn">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+const history = [];
+let network = null;
+let nodesData = null;
+let edgesData = null;
+
+// ── Build Vis.js Network ──────────────────────────────────────────────────────
+function styleNode(n, isHighlighted = false, isFaded = false) {
+  const isRed = n.group === 'financial' || n.group === 'document';
+  const baseColor = isRed ? '#ff6b6b' : '#3b82f6';
+  
+  if (isHighlighted) {
+    return {
+      color: { background: baseColor, border: '#0f172a' },
+      size: 16,
+      borderWidth: 3,
+      opacity: 1,
+      font: { color: '#0f172a', size: 14, background: 'rgba(255,255,255,0.8)' }
+    };
+  } else if (isFaded) {
+    return {
+      color: { background: baseColor, border: 'transparent' },
+      size: 6,
+      borderWidth: 0,
+      opacity: 0.15,
+      font: { size: 0 } // hide label
+    };
+  } else {
+    // Normal state
+    return {
+      color: { background: baseColor, border: 'transparent' },
+      size: 6,
+      borderWidth: 0,
+      opacity: 0.8,
+      font: { size: 0 }
+    };
+  }
+}
+
+function styleEdge(e, isHighlighted = false, isFaded = false) {
+  if (isHighlighted) {
+    return { color: { color: '#0f172a' }, width: 3, opacity: 1, font: {size: 11, color: '#0f172a'} };
+  } else if (isFaded) {
+    return { color: { color: '#cbd5e1' }, width: 1, opacity: 0.15, font: {size: 0} };
+  } else {
+    return { color: { color: '#badaff' }, width: 1, opacity: 0.6, font: {size: 0} };
+  }
+}
+
+function buildGraph(data) {
+  const container = document.getElementById('graph-container');
+  
+  nodesData = new vis.DataSet(data.nodes.map(n => ({
+    id: n.id,
+    label: n.label,
+    group: n.group,
+    metadata: n.metadata,
+    shape: 'dot',
+    ...styleNode(n)
+  })));
+
+  edgesData = new vis.DataSet(data.edges.map(e => ({
+    id: e.from + '-' + e.to + '-' + (e.label || ''),
+    from: e.from,
+    to: e.to,
+    label: e.label || '',
+    arrows: { to: { enabled: true, scaleFactor: 0.4 } },
+    smooth: { type: 'continuous' },
+    ...styleEdge(e)
+  })));
+
+  const options = {
+    physics: {
+      enabled: true,
+      barnesHut: { gravitationalConstant: -3000, centralGravity: 0.3, springLength: 95, springConstant: 0.04 },
+      stabilization: { iterations: 200 }
+    },
+    interaction: {
+      hover: true,
+      tooltipDelay: 100,
+      zoomView: true,
+      dragView: true,
+    },
+  };
+
+  if (network) network.destroy();
+  network = new vis.Network(container, { nodes: nodesData, edges: edgesData }, options);
+
+  // Custom tooltips logic
+  const tooltip = document.getElementById('custom-tooltip');
+  
+  network.on("hoverNode", function (params) {
+    const nodeId = params.node;
+    const node = nodesData.get(nodeId);
+    if (!node) return;
+
+    let html = `<h3>${node.label}</h3>`;
+    if (node.metadata) {
+      Object.keys(node.metadata).forEach(k => {
+        let val = node.metadata[k];
+        if (val !== null && val !== '') {
+          html += `<div class="tt-row"><span class="tt-key">${k}</span><span class="tt-val" title="${val}">${val}</span></div>`;
+        }
+      });
+    }
+
+    tooltip.innerHTML = html;
+    tooltip.style.display = 'block';
+  });
+
+  network.on("blurNode", function () {
+    tooltip.style.display = 'none';
+  });
+
+  network.on("mousemove", function(params) {
+    if (tooltip.style.display === 'block') {
+      tooltip.style.left = (params.pointer.DOM.x + 15) + 'px';
+      tooltip.style.top = (params.pointer.DOM.y + 15) + 'px';
+    }
+  });
+}
+
+// ── Graph Fading Highlighting  ────────────────────────────────────────────────
+function highlightNodes(idsToHighlight) {
+  if (!idsToHighlight || idsToHighlight.length === 0) {
+    resetGraphStyles();
+    return;
+  }
+
+  const idSet = new Set(idsToHighlight.map(String));
+  
+  // Update Nodes
+  const nodeUpdates = [];
+  nodesData.forEach(n => {
+    const isHigh = idSet.has(String(n.id));
+    nodeUpdates.push({ id: n.id, ...styleNode(n, isHigh, !isHigh) });
+  });
+  nodesData.update(nodeUpdates);
+
+  // Update Edges
+  const edgeUpdates = [];
+  edgesData.forEach(e => {
+    const isHigh = idSet.has(String(e.from)) && idSet.has(String(e.to));
+    edgeUpdates.push({ id: e.id, ...styleEdge(e, isHigh, !isHigh) });
+  });
+  edgesData.update(edgeUpdates);
+
+  // Fit to highlighted nodes that actually exist in the graph
+  const validIds = Array.from(idSet).filter(id => nodesData.get(id) !== null);
+  if (validIds.length > 0) {
+    network.fit({ nodes: validIds, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+  }
+}
+
+function resetGraphStyles() {
+  const nodeUpdates = [];
+  nodesData.forEach(n => nodeUpdates.push({ id: n.id, ...styleNode(n, false, false) }));
+  nodesData.update(nodeUpdates);
+  
+  const edgeUpdates = [];
+  edgesData.forEach(e => edgeUpdates.push({ id: e.id, ...styleEdge(e, false, false) }));
+  edgesData.update(edgeUpdates);
+  
+  network.fit({ animation: { duration: 800 } });
+}
+
+
+// ── Chat logic ────────────────────────────────────────────────────────────────
+function appendMessage(role, html, extras = {}) {
+  const container = document.getElementById('chat-messages');
+  const msg = document.createElement('div');
+  msg.className = `message ${role}`;
+
+  let inner = '';
+  if (role === 'bot') {
+    inner += `
+      <div class="avatar">D</div>
+      <div class="msg-content">
+        <div class="msg-header"><span class="msg-name">Dodge AI</span><span class="msg-role">Graph Agent</span></div>
+        <div class="msg-bubble">${html}</div>
+    `;
+    if (extras.sql) {
+      inner += `<div class="sql-block">${escapeHtml(extras.sql)}</div>`;
+    }
+    inner += `</div>`;
+  } else {
+    inner += `
+      <div class="msg-content" style="text-align: right;">
+        <div class="msg-header" style="justify-content: flex-end;"><span class="msg-role">You</span><span class="msg-name"></span></div>
+        <div class="msg-bubble" style="display:inline-block; text-align:left;">${escapeHtml(html)}</div>
+      </div>
+      <div class="avatar">U</div>
+    `;
+  }
+
+  msg.innerHTML = inner;
+  container.appendChild(msg);
+  container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(str) { return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+async function sendQuery() {
+  const input = document.getElementById('user-input');
+  const question = input.value.trim();
+  if (!question) return;
+
+  input.value = '';
+  appendMessage('user', question);
+  history.push({ role: 'user', content: question });
+
+  let answer = '', sql = null, ids = [];
+
+  try {
+    const res = await fetch(`${API}/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, history: history.slice(-6) })
+    });
+
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+    answer = data.answer || 'No answer returned.';
+    sql = data.sql || null;
+    ids = data.highlighted_ids || [];
+
+    appendMessage('bot', answer, { sql });
+    history.push({ role: 'assistant', content: answer });
+  } catch (err) {
+    appendMessage('bot', `⚠️ Error: ${err.message}`);
+    return;
+  }
+
+  // ── Graph Update Section ──────────────────────────────────────────────────
+  if (ids.length === 0) {
+    // No entity IDs found – just reset the graph to normal
+    resetGraphStyles();
+    return;
+  }
+
+  // Step 1: fetch the full subgraph for these entity IDs
+  let allHighlightIds = new Set(ids.map(String));
+  try {
+    const subRes = await fetch(`${API}/subgraph`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity_ids: ids })
+    });
+    if (subRes.ok) {
+      const subData = await subRes.json();
+
+      // Step 2: Inject any missing nodes (from subgraph) into the main graph dataset
+      subData.nodes.forEach(n => {
+        const nodeId = String(n.id);
+        allHighlightIds.add(nodeId); // highlight ALL subgraph nodes
+        if (!nodesData.get(nodeId)) {
+          nodesData.add({
+            id: nodeId,
+            label: n.label || nodeId,
+            group: n.group || 'document',
+            metadata: n.metadata || {},
+            shape: 'dot',
+            ...styleNode(n)
+          });
+        }
+      });
+
+      // Step 3: Inject any missing edges into the graph dataset
+      subData.edges.forEach(e => {
+        const edgeId = `${e.from}-${e.to}-${e.label || ''}`;
+        if (!edgesData.get(edgeId)) {
+          edgesData.add({
+            id: edgeId,
+            from: String(e.from),
+            to: String(e.to),
+            label: e.label || '',
+            arrows: { to: { enabled: true, scaleFactor: 0.4 } },
+            smooth: { type: 'continuous' },
+            ...styleEdge(e)
+          });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn('Subgraph fetch failed, highlighting raw IDs only:', err);
+  }
+
+  // Step 4: Highlight all nodes we know about
+  highlightNodes(Array.from(allHighlightIds));
+}
+
+document.getElementById('send-btn').addEventListener('click', sendQuery);
+document.getElementById('user-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuery(); }
+});
+
+document.getElementById('fit-btn').addEventListener('click', () => {
+  if (network) network.fit({ animation: { duration: 600 } });
+});
+document.getElementById('reset-btn').addEventListener('click', resetGraphStyles);
+
+// ── Initial setup ─────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const res = await fetch(`${API}/graph/full`);
+    if (!res.ok) throw new Error('API unreachable');
+    const data = await res.json();
+    buildGraph(data);
+  } catch (e) {
+    document.getElementById('api-status').style.background = '#ef4444';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
