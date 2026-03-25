@@ -7,6 +7,7 @@ from app.db.connection import get_db_connection
 
 def ingest_data():
     """Ingests data from JSONL files into the database on startup."""
+    print("Starting ingestion...")
     data_path = Path(DATA_DIR)
     if not data_path.exists():
         print(f"Data directory '{DATA_DIR}' not found. Skipping ingestion.")
@@ -56,7 +57,7 @@ def ingest_data():
             
             df.to_sql(table_name, conn, if_exists=table_mode, index=False)
             tables_created.add(table_name)
-            print(f"Ingested {file_name} into table '{table_name}' ({len(df)} rows loaded)")
+            print(f"Loaded {table_name}: {len(df)} rows")
     except Exception as e:
         print(f"Error during data ingestion: {e}")
     finally:

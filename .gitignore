@@ -25,7 +25,7 @@ node_modules/
 *.log
 
 # Local data (large raw datasets)
-data/
+# (Allowed for Render deployment initialization)
 
 # Test / debug scripts
 test_*.py
